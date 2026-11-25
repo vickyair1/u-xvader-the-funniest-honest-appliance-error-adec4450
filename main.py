@@ -3,10 +3,13 @@
 u-xvader-the-funniest-honest-appliance-error-adec4450.
 
 Writes one line (at most 200 characters): the funniest honest error
-message an appliance could show. The program writes the entry
-deterministically to entry.txt next to this file (the sandbox maps the
-work dir to /output at grade time; writing beside __file__ keeps local
-runs and graded runs identical).
+message an appliance could show.
+
+Output is /output/entry.txt ONLY. The grade sandbox mounts the repo
+read-only and provides /output as the writable directory; the gate
+reads /output/entry.txt. Writing beside __file__ fails there (the
+open raises, the program exits 1, run_completes fails), so this
+program never writes anywhere else.
 """
 
 import hashlib
@@ -23,6 +26,24 @@ ENTRY = (
 )
 
 MAX_CHARS = 200
+
+# The grade sandbox's writable directory; the gate reads this file.
+OUTPUT_DIR = "/output"
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "entry.txt")
+
+
+def entry_path():
+    """Deterministic output location: /output/entry.txt."""
+    return OUTPUT_PATH
+
+
+def write_entry():
+    """Create /output if needed, then write the validated entry there."""
+    text = validate_entry(ENTRY)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(OUTPUT_PATH, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
+    return OUTPUT_PATH, text
 
 
 def validate_entry(text):
@@ -42,19 +63,6 @@ def validate_entry(text):
     return text
 
 
-def entry_path():
-    """Deterministic output location: entry.txt beside this file."""
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "entry.txt")
-
-
-def write_entry():
-    text = validate_entry(ENTRY)
-    path = entry_path()
-    with open(path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(text)
-    return path, text
-
-
 def main():
     path, text = write_entry()
     digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -64,4 +72,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
